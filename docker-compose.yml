@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: robofleet-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-robofleet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-robofleet_password}
+      POSTGRES_DB: ${POSTGRES_DB:-robofleet_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/internal/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+
+volumes:
+  postgres_data:
