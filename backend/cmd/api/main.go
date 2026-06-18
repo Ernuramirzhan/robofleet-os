@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Ernuramirzhan/robofleet-os/backend/internal/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,6 +17,7 @@ func main() {
 	api := router.Group("/api/v1")
 	{
 		api.GET("/health", healthHandler)
+		api.POST("/telemetry", telemetryHandler)
 	}
 
 	log.Println("RoboFleet API is running on http://localhost:8080")
@@ -31,4 +33,40 @@ func healthHandler(c *gin.Context) {
 		"service": "robofleet-api",
 		"version": "0.1.0",
 	})
+}
+
+func telemetryHandler(c *gin.Context) {
+	var input models.TelemetryInput
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid telemetry payload",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	record := models.TelemetryRecord{
+		TelemetryInput:   input,
+		ConnectionStatus: calculateConnectionStatus(input.SignalStrength),
+		RouteDeviation:   0.0,
+		IsStuck:          input.Speed < 0.05 && input.TaskStatus == "moving",
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "telemetry received",
+		"data":    record,
+	})
+}
+
+func calculateConnectionStatus(signalStrength int) string {
+	if signalStrength <= 0 {
+		return "offline"
+	}
+
+	if signalStrength < 30 {
+		return "weak_signal"
+	}
+
+	return "online"
 }
