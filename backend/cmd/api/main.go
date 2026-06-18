@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Ernuramirzhan/robofleet-os/backend/internal/alerts"
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/models"
 	"github.com/gin-gonic/gin"
 )
@@ -53,9 +54,12 @@ func telemetryHandler(c *gin.Context) {
 		IsStuck:          input.Speed < 0.05 && input.TaskStatus == "moving",
 	}
 
+	generatedAlerts := alerts.EvaluateTelemetry(record)
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "telemetry received",
 		"data":    record,
+		"alerts":  generatedAlerts,
 	})
 }
 
