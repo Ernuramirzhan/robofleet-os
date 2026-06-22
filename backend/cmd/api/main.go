@@ -1,15 +1,26 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/alerts"
+	"github.com/Ernuramirzhan/robofleet-os/backend/internal/database"
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
+	ctx := context.Background()
+
+	dbPool, err := database.Connect(ctx)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	defer dbPool.Close()
+
 	router := gin.New()
 
 	router.Use(gin.Logger())
@@ -18,6 +29,7 @@ func main() {
 	api := router.Group("/api/v1")
 	{
 		api.GET("/health", healthHandler)
+		api.GET("/db/health", dbHealthHandler(dbPool))
 		api.POST("/telemetry", telemetryHandler)
 	}
 
@@ -34,6 +46,23 @@ func healthHandler(c *gin.Context) {
 		"service": "robofleet-api",
 		"version": "0.1.0",
 	})
+}
+
+func dbHealthHandler(dbPool *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if err := dbPool.Ping(c.Request.Context()); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status": "error",
+				"error":  "database is not reachable",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":   "ok",
+			"database": "connected",
+		})
+	}
 }
 
 func telemetryHandler(c *gin.Context) {
