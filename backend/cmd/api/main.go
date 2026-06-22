@@ -8,6 +8,7 @@ import (
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/alerts"
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/database"
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/models"
+	"github.com/Ernuramirzhan/robofleet-os/backend/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -21,6 +22,10 @@ func main() {
 	}
 	defer dbPool.Close()
 
+	robotRepo := repository.NewRobotRepository(dbPool)
+	telemetryRepo := repository.NewTelemetryRepository(dbPool)
+	alertRepo := repository.NewAlertRepository(dbPool)
+
 	router := gin.New()
 
 	router.Use(gin.Logger())
@@ -30,7 +35,7 @@ func main() {
 	{
 		api.GET("/health", healthHandler)
 		api.GET("/db/health", dbHealthHandler(dbPool))
-		api.POST("/telemetry", telemetryHandler)
+		api.POST("/telemetry", telemetryHandler(robotRepo, telemetryRepo, alertRepo))
 	}
 
 	log.Println("RoboFleet API is running on http://localhost:8080")
@@ -65,31 +70,72 @@ func dbHealthHandler(dbPool *pgxpool.Pool) gin.HandlerFunc {
 	}
 }
 
-func telemetryHandler(c *gin.Context) {
-	var input models.TelemetryInput
+func telemetryHandler(
+	robotRepo *repository.RobotRepository,
+	telemetryRepo *repository.TelemetryRepository,
+	alertRepo *repository.AlertRepository,
+) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var input models.TelemetryInput
 
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid telemetry payload",
-			"details": err.Error(),
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "invalid telemetry payload",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		record := models.TelemetryRecord{
+			TelemetryInput:   input,
+			ConnectionStatus: calculateConnectionStatus(input.SignalStrength),
+			RouteDeviation:   0.0,
+			IsStuck:          input.Speed < 0.05 && input.TaskStatus == "moving",
+		}
+
+		generatedAlerts := alerts.EvaluateTelemetry(record)
+
+		robot := models.Robot{
+			ID:          input.RobotID,
+			Name:        input.RobotID,
+			RobotClass:  input.RobotClass,
+			Status:      input.TaskStatus,
+			CurrentZone: input.CurrentZone,
+			TargetZone:  input.TargetZone,
+		}
+
+		if err := robotRepo.UpsertRobot(c.Request.Context(), robot); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to save robot",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		telemetryID, err := telemetryRepo.SaveTelemetry(c.Request.Context(), record)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to save telemetry",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		if err := alertRepo.SaveAlerts(c.Request.Context(), generatedAlerts); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to save alerts",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"message":      "telemetry received",
+			"telemetry_id": telemetryID,
+			"data":         record,
+			"alerts":       generatedAlerts,
 		})
-		return
 	}
-
-	record := models.TelemetryRecord{
-		TelemetryInput:   input,
-		ConnectionStatus: calculateConnectionStatus(input.SignalStrength),
-		RouteDeviation:   0.0,
-		IsStuck:          input.Speed < 0.05 && input.TaskStatus == "moving",
-	}
-
-	generatedAlerts := alerts.EvaluateTelemetry(record)
-
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "telemetry received",
-		"data":    record,
-		"alerts":  generatedAlerts,
-	})
 }
 
 func calculateConnectionStatus(signalStrength int) string {
