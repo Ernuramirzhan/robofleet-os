@@ -35,6 +35,7 @@ func main() {
 	{
 		api.GET("/health", healthHandler)
 		api.GET("/db/health", dbHealthHandler(dbPool))
+		api.GET("/alerts", alertsHandler(alertRepo))
 		api.POST("/telemetry", telemetryHandler(robotRepo, telemetryRepo, alertRepo))
 	}
 
@@ -134,6 +135,24 @@ func telemetryHandler(
 			"telemetry_id": telemetryID,
 			"data":         record,
 			"alerts":       generatedAlerts,
+		})
+	}
+}
+
+func alertsHandler(alertRepo *repository.AlertRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		recentAlerts, err := alertRepo.GetRecentAlerts(c.Request.Context(), 20)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to get alerts",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"alerts": recentAlerts,
+			"count":  len(recentAlerts),
 		})
 	}
 }

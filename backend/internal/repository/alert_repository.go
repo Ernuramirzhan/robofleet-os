@@ -50,3 +50,54 @@ func (r *AlertRepository) SaveAlerts(ctx context.Context, alerts []models.Alert)
 
 	return nil
 }
+
+
+func (r *AlertRepository) GetRecentAlerts(ctx context.Context, limit int) ([]models.Alert, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+
+	rows, err := r.db.Query(ctx, `
+		SELECT
+			id,
+			robot_id,
+			alert_type,
+			severity,
+			message,
+			status,
+			created_at
+		FROM alerts
+		ORDER BY created_at DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.Alert
+
+	for rows.Next() {
+		var alert models.Alert
+
+		if err := rows.Scan(
+			&alert.ID,
+			&alert.RobotID,
+			&alert.Type,
+			&alert.Severity,
+			&alert.Message,
+			&alert.Status,
+			&alert.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		result = append(result, alert)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
