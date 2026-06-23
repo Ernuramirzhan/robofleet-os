@@ -36,6 +36,7 @@ func main() {
 		api.GET("/health", healthHandler)
 		api.GET("/db/health", dbHealthHandler(dbPool))
 		api.GET("/alerts", alertsHandler(alertRepo))
+		api.GET("/robots", robotsHandler(robotRepo))
 		api.POST("/telemetry", telemetryHandler(robotRepo, telemetryRepo, alertRepo))
 	}
 
@@ -153,6 +154,24 @@ func alertsHandler(alertRepo *repository.AlertRepository) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"alerts": recentAlerts,
 			"count":  len(recentAlerts),
+		})
+	}
+}
+
+func robotsHandler(robotRepo *repository.RobotRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		robots, err := robotRepo.GetAllRobots(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to get robots",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"robots": robots,
+			"count":  len(robots),
 		})
 	}
 }

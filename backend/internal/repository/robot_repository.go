@@ -49,3 +49,48 @@ func (r *RobotRepository) UpsertRobot(ctx context.Context, robot models.Robot) e
 
 	return err
 }
+
+func (r *RobotRepository) GetAllRobots(ctx context.Context) ([]models.Robot, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT
+			id,
+			name,
+			robot_class,
+			status,
+			current_zone,
+			target_zone,
+			created_at
+		FROM robots
+		ORDER BY id
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.Robot
+
+	for rows.Next() {
+		var robot models.Robot
+
+		if err := rows.Scan(
+			&robot.ID,
+			&robot.Name,
+			&robot.RobotClass,
+			&robot.Status,
+			&robot.CurrentZone,
+			&robot.TargetZone,
+			&robot.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		result = append(result, robot)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
