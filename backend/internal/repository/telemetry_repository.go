@@ -75,3 +75,77 @@ func (r *TelemetryRepository) SaveTelemetry(ctx context.Context, record models.T
 
 	return telemetryID, nil
 }
+
+func (r *TelemetryRepository) GetRecentTelemetry(ctx context.Context, limit int) ([]models.TelemetryRecord, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+
+	rows, err := r.db.Query(ctx, `
+		SELECT
+			robot_id,
+			robot_class,
+			timestamp,
+			x,
+			y,
+			current_zone,
+			target_zone,
+			speed,
+			battery_level,
+			temperature,
+			motor_load,
+			task_status,
+			signal_strength,
+			obstacle_detected,
+			distance_to_obstacle,
+			error_code,
+			connection_status,
+			route_deviation,
+			is_stuck
+		FROM telemetry_records
+		ORDER BY timestamp DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.TelemetryRecord
+
+	for rows.Next() {
+		var record models.TelemetryRecord
+
+		if err := rows.Scan(
+			&record.RobotID,
+			&record.RobotClass,
+			&record.Timestamp,
+			&record.X,
+			&record.Y,
+			&record.CurrentZone,
+			&record.TargetZone,
+			&record.Speed,
+			&record.BatteryLevel,
+			&record.Temperature,
+			&record.MotorLoad,
+			&record.TaskStatus,
+			&record.SignalStrength,
+			&record.ObstacleDetected,
+			&record.DistanceToObstacle,
+			&record.ErrorCode,
+			&record.ConnectionStatus,
+			&record.RouteDeviation,
+			&record.IsStuck,
+		); err != nil {
+			return nil, err
+		}
+
+		result = append(result, record)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
