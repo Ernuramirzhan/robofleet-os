@@ -29,6 +29,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://robofleet:robofleet_password@postgres:5432/robofleet_db?sslmode=disable
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: qwen2.5:3b
     ports:
       - "8080:8080"
 

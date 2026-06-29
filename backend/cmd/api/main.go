@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/Ernuramirzhan/robofleet-os/backend/internal/ai"
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/alerts"
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/database"
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/models"
@@ -26,6 +29,7 @@ func main() {
 	robotRepo := repository.NewRobotRepository(dbPool)
 	telemetryRepo := repository.NewTelemetryRepository(dbPool)
 	alertRepo := repository.NewAlertRepository(dbPool)
+	aiClient := ai.NewClient(os.Getenv("OLLAMA_BASE_URL"), os.Getenv("OLLAMA_MODEL"))
 
 	router := gin.New()
 
@@ -46,6 +50,8 @@ func main() {
 
 		api.GET("/telemetry", telemetryListHandler(telemetryRepo))
 		api.POST("/telemetry", telemetryHandler(robotRepo, telemetryRepo, alertRepo))
+
+		api.POST("/ai/explain", aiExplainHandler(aiClient, telemetryRepo, alertRepo))
 	}
 
 	log.Println("RoboFleet API is running on http://localhost:8080")
@@ -281,4 +287,118 @@ func robotAlertsHandler(alertRepo *repository.AlertRepository) gin.HandlerFunc {
 			"count":    len(alerts),
 		})
 	}
+}
+
+type aiExplainRequest struct {
+	RobotID string `json:"robot_id" binding:"required"`
+}
+
+func aiExplainHandler(
+	aiClient *ai.Client,
+	telemetryRepo *repository.TelemetryRepository,
+	alertRepo *repository.AlertRepository,
+) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var request aiExplainRequest
+
+		if err := c.ShouldBindJSON(&request); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "invalid request body",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		records, err := telemetryRepo.GetTelemetryByRobotID(c.Request.Context(), request.RobotID, 1)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to get robot telemetry",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		if len(records) == 0 {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error":    "telemetry not found for robot",
+				"robot_id": request.RobotID,
+			})
+			return
+		}
+
+		robotAlerts, err := alertRepo.GetAlertsByRobotID(c.Request.Context(), request.RobotID, 6)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to get robot alerts",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		prompt := buildAIExplanationPrompt(request.RobotID, records[0], robotAlerts)
+
+		explanation, err := aiClient.Generate(c.Request.Context(), prompt)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to generate AI explanation",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"robot_id":    request.RobotID,
+			"explanation": explanation,
+		})
+	}
+}
+
+func buildAIExplanationPrompt(robotID string, telemetry models.TelemetryRecord, alerts []models.Alert) string {
+	return fmt.Sprintf(`
+You are an assistant for a warehouse robot monitoring system.
+
+Answer only in English.
+Do not use Chinese, Russian or any other language.
+Be clear, practical and concise.
+
+Robot ID: %s
+
+Latest telemetry:
+- Robot class: %s
+- Current zone: %s
+- Target zone: %s
+- Speed: %.2f
+- Battery level: %d%%
+- Temperature: %.1f°C
+- Motor load: %.1f%%
+- Signal strength: %d
+- Obstacle detected: %t
+- Distance to obstacle: %.2fm
+- Connection status: %s
+- Is stuck: %t
+
+Recent alerts:
+%v
+
+Explain:
+1. Why this robot is risky.
+2. What the likely causes are.
+3. What the operator should do.
+4. Priority level.
+`,
+		robotID,
+		telemetry.RobotClass,
+		telemetry.CurrentZone,
+		telemetry.TargetZone,
+		telemetry.Speed,
+		telemetry.BatteryLevel,
+		telemetry.Temperature,
+		telemetry.MotorLoad,
+		telemetry.SignalStrength,
+		telemetry.ObstacleDetected,
+		telemetry.DistanceToObstacle,
+		telemetry.ConnectionStatus,
+		telemetry.IsStuck,
+		alerts,
+	)
 }
