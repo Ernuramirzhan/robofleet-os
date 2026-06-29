@@ -221,6 +221,10 @@ Send 5 telemetry batches with a delay between batches:
 ```bash
 python simulator/continuous_simulator.py
 ```
+Send one randomized telemetry batch:
+
+```bash
+python simulator/randomized_simulator.py
 
 The backend must be running before starting the simulator.
 
