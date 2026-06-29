@@ -12,11 +12,14 @@ The goal of RoboFleet OS is to build a backend platform for robot fleet monitori
 
 Implemented so far:
 
-* Python robot simulator
-* Multi-robot telemetry simulation with different alert scenarios
 * Go backend with Gin
 * PostgreSQL database
 * Docker Compose setup
+* Dockerfile for Go backend
+* Backend and PostgreSQL run together through Docker Compose
+* Python robot simulator
+* Multi-robot telemetry simulation with different alert scenarios
+* Limited continuous simulator with 5 telemetry batches
 * Health check endpoint
 * Database health check endpoint
 * Telemetry ingestion endpoint
@@ -36,13 +39,14 @@ Current stack:
 * Go
 * Gin Web Framework
 * PostgreSQL
+* Docker
 * Docker Compose
 * pgx PostgreSQL driver
+* Python
 * Git / GitHub
 
 Planned stack:
 
-* Python robot simulator
 * WebSocket real-time updates
 * Dashboard
 * AI / Ollama anomaly explanation module
@@ -55,10 +59,29 @@ Planned stack:
 GET /api/v1/health
 ```
 
+Example response:
+
+```json
+{
+  "service": "robofleet-api",
+  "status": "ok",
+  "version": "0.1.0"
+}
+```
+
 ### Database Health Check
 
 ```http
 GET /api/v1/db/health
+```
+
+Example response:
+
+```json
+{
+  "database": "connected",
+  "status": "ok"
+}
 ```
 
 ### Submit Robot Telemetry
@@ -122,9 +145,18 @@ RoboFleet-OS/
 │   │   ├── database/
 │   │   ├── models/
 │   │   └── repository/
+│   ├── Dockerfile
 │   ├── go.mod
 │   └── go.sum
 ├── docs/
+│   ├── alert_rules.md
+│   ├── project_concept.md
+│   ├── robot_classes.md
+│   ├── telemetry_fields.md
+│   └── warehouse_map.md
+├── simulator/
+│   ├── robot_simulator.py
+│   └── continuous_simulator.py
 ├── docker-compose.yml
 ├── .env.example
 ├── .gitignore
@@ -133,24 +165,64 @@ RoboFleet-OS/
 
 ## Run Locally
 
-Start PostgreSQL:
+Start PostgreSQL and the backend API with Docker Compose:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-Run the backend:
+The API server will be available at:
+
+```text
+http://localhost:8080
+```
+
+Check API health:
+
+```http
+GET /api/v1/health
+```
+
+Check database connection:
+
+```http
+GET /api/v1/db/health
+```
+
+To stop all containers:
+
+```bash
+docker compose down
+```
+
+For local Go development without Docker backend:
 
 ```bash
 cd backend
 go run ./cmd/api
 ```
 
-The server starts on:
+Note: if the Docker backend is already running on port 8080, stop it before using `go run`:
 
-```text
-http://localhost:8080
+```bash
+docker compose stop backend
 ```
+
+## Run Simulators
+
+Send one telemetry batch for multiple robots:
+
+```bash
+python simulator/robot_simulator.py
+```
+
+Send 5 telemetry batches with a delay between batches:
+
+```bash
+python simulator/continuous_simulator.py
+```
+
+The backend must be running before starting the simulator.
 
 ## Run Tests
 
@@ -189,10 +261,12 @@ Backend and platform development:
 * API endpoints
 * PostgreSQL integration
 * Docker Compose setup
+* Dockerfile for backend
 * telemetry ingestion logic
 * data models
 * alert evaluation engine
 * repository layer
+* Python simulator
 * automated tests
 * Git and project setup
 
@@ -200,12 +274,13 @@ Backend and platform development:
 
 Next planned steps:
 
-* improve simulator with continuous telemetry generation
-* add Dockerfile for Go backend
-* run backend and PostgreSQL together through Docker Compose
+* add randomized telemetry generation
+* add robot-specific telemetry history endpoints
+* add robot-specific alert endpoints
 * add WebSocket real-time updates
 * add dashboard or API-based monitoring view
 * connect AI / Ollama for anomaly explanation
+* prepare demo scenario and final documentation
 
 ## Status
 
