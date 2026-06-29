@@ -144,7 +144,35 @@ OBSTACLE_CRITICAL
 ROBOT_STUCK
 ```
 
-## 8. Stop the Project
+## 8. Check Specific Robot Data
+
+Open in browser:
+
+```text
+http://localhost:8080/api/v1/robots/HLB-002
+```
+
+This endpoint shows details for one specific robot.
+
+Open robot telemetry:
+
+```text
+http://localhost:8080/api/v1/robots/HLB-002/telemetry
+```
+
+This endpoint shows recent telemetry records only for robot `HLB-002`.
+
+Open robot alerts:
+
+```text
+http://localhost:8080/api/v1/robots/HLB-002/alerts
+```
+
+This endpoint shows recent alerts only for robot `HLB-002`.
+
+This is useful for checking a problematic robot separately from the whole fleet.
+
+## 9. Stop the Project
 
 Stop all containers:
 
