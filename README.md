@@ -1,12 +1,12 @@
 # RoboFleet OS
 
-RoboFleet OS is a simulation-based backend system for monitoring a fleet of virtual warehouse robots in real time.
+RoboFleet OS is a simulation-based backend system for monitoring a fleet of virtual warehouse robots.
 
 The system receives telemetry data from robots, stores it in PostgreSQL, analyzes robot status and generates alerts when abnormal behavior is detected.
 
 ## Project Goal
 
-The goal of RoboFleet OS is to build a backend platform for robot fleet monitoring, telemetry processing, alert generation and future AI-based anomaly detection.
+The goal of RoboFleet OS is to build a backend platform for robot fleet monitoring, telemetry processing, alert generation and future AI-based anomaly explanation.
 
 ## Current Features
 
@@ -20,17 +20,22 @@ Implemented so far:
 * Python robot simulator
 * Multi-robot telemetry simulation with different alert scenarios
 * Limited continuous simulator with 5 telemetry batches
+* Randomized telemetry simulator
 * Health check endpoint
 * Database health check endpoint
 * Telemetry ingestion endpoint
 * Alerts API endpoint
 * Robots API endpoint
 * Telemetry records API endpoint
+* Robot details API endpoint
+* Robot-specific telemetry API endpoint
+* Robot-specific alerts API endpoint
 * Robot, telemetry and alert data models
 * Rule-based alert evaluation engine
 * Saving robots, telemetry records and alerts to PostgreSQL
 * Unit tests for alert engine
 * Project documentation in `docs/`
+* Demo scenario documentation
 
 ## Tech Stack
 
@@ -108,6 +113,48 @@ GET /api/v1/robots
 
 Returns all robots saved in PostgreSQL.
 
+### Get Robot by ID
+
+```http
+GET /api/v1/robots/:id
+```
+
+Example:
+
+```http
+GET /api/v1/robots/HLB-002
+```
+
+Returns details for a specific robot.
+
+### Get Robot Telemetry
+
+```http
+GET /api/v1/robots/:id/telemetry
+```
+
+Example:
+
+```http
+GET /api/v1/robots/HLB-002/telemetry
+```
+
+Returns recent telemetry records for a specific robot.
+
+### Get Robot Alerts
+
+```http
+GET /api/v1/robots/:id/alerts
+```
+
+Example:
+
+```http
+GET /api/v1/robots/HLB-002/alerts
+```
+
+Returns recent alerts for a specific robot.
+
 ### Get Telemetry Records
 
 ```http
@@ -150,13 +197,15 @@ RoboFleet-OS/
 │   └── go.sum
 ├── docs/
 │   ├── alert_rules.md
+│   ├── demo_scenario.md
 │   ├── project_concept.md
 │   ├── robot_classes.md
 │   ├── telemetry_fields.md
 │   └── warehouse_map.md
 ├── simulator/
 │   ├── robot_simulator.py
-│   └── continuous_simulator.py
+│   ├── continuous_simulator.py
+│   └── randomized_simulator.py
 ├── docker-compose.yml
 ├── .env.example
 ├── .gitignore
@@ -221,10 +270,14 @@ Send 5 telemetry batches with a delay between batches:
 ```bash
 python simulator/continuous_simulator.py
 ```
+
 Send one randomized telemetry batch:
 
 ```bash
 python simulator/randomized_simulator.py
+```
+
+The randomized simulator slightly changes robot position, speed, battery level, temperature, motor load and signal strength on every run.
 
 The backend must be running before starting the simulator.
 
@@ -244,18 +297,41 @@ Project documentation is located in the `docs/` folder:
 * `telemetry_fields.md`
 * `alert_rules.md`
 * `warehouse_map.md`
+* `demo_scenario.md`
+
+## Demo Scenario
+
+The demo scenario is described in:
+
+```text
+docs/demo_scenario.md
+```
+
+It includes the basic project demonstration flow:
+
+* start Docker Compose
+* check API health
+* check database health
+* run robot simulator
+* check robots
+* check telemetry records
+* check alerts
+* stop containers
 
 ## Individual Contributions
 
 ### Yernur Yermekkaliyev
 
-Robotics and automation concept:
+Robotics, automation concept and simulation:
 
 * robot fleet concept
 * warehouse robot classes
 * telemetry field design
 * warehouse map and movement scenarios
 * alert rules from robotics perspective
+* Python robot simulator
+* continuous telemetry simulation
+* randomized telemetry simulation
 
 ### Zhannur Yermekkaliyev
 
@@ -270,21 +346,19 @@ Backend and platform development:
 * data models
 * alert evaluation engine
 * repository layer
-* Python simulator
 * automated tests
 * Git and project setup
+* README and project documentation
 
 ## Roadmap
 
 Next planned steps:
 
-* add randomized telemetry generation
-* add robot-specific telemetry history endpoints
-* add robot-specific alert endpoints
+* improve README and demo documentation
 * add WebSocket real-time updates
 * add dashboard or API-based monitoring view
 * connect AI / Ollama for anomaly explanation
-* prepare demo scenario and final documentation
+* prepare final demo video
 
 ## Status
 
