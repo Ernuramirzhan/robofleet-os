@@ -12,6 +12,8 @@ The goal of RoboFleet OS is to build a backend platform for robot fleet monitori
 
 Implemented so far:
 
+* Python robot simulator
+* Multi-robot telemetry simulation with different alert scenarios
 * Go backend with Gin
 * PostgreSQL database
 * Docker Compose setup
@@ -198,7 +200,7 @@ Backend and platform development:
 
 Next planned steps:
 
-* build Python robot simulator
+* improve simulator with continuous telemetry generation
 * add Dockerfile for Go backend
 * run backend and PostgreSQL together through Docker Compose
 * add WebSocket real-time updates
