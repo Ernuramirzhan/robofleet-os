@@ -39,6 +39,7 @@ func main() {
 		api.GET("/alerts", alertsHandler(alertRepo))
 		api.GET("/robots", robotsHandler(robotRepo))
 		api.GET("/robots/:id", robotByIDHandler(robotRepo))
+		api.GET("/robots/:id/telemetry", robotTelemetryHandler(telemetryRepo))
 		api.GET("/telemetry", telemetryListHandler(telemetryRepo))
 		api.POST("/telemetry", telemetryHandler(robotRepo, telemetryRepo, alertRepo))
 	}
@@ -232,6 +233,27 @@ func robotByIDHandler(robotRepo *repository.RobotRepository) gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"robot": robot,
+		})
+	}
+}
+
+func robotTelemetryHandler(telemetryRepo *repository.TelemetryRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		robotID := c.Param("id")
+
+		records, err := telemetryRepo.GetTelemetryByRobotID(c.Request.Context(), robotID, 20)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to get robot telemetry",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"robot_id":  robotID,
+			"telemetry": records,
+			"count":     len(records),
 		})
 	}
 }
