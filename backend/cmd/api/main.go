@@ -10,6 +10,7 @@ import (
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/models"
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/repository"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -37,6 +38,7 @@ func main() {
 		api.GET("/db/health", dbHealthHandler(dbPool))
 		api.GET("/alerts", alertsHandler(alertRepo))
 		api.GET("/robots", robotsHandler(robotRepo))
+		api.GET("/robots/:id", robotByIDHandler(robotRepo))
 		api.GET("/telemetry", telemetryListHandler(telemetryRepo))
 		api.POST("/telemetry", telemetryHandler(robotRepo, telemetryRepo, alertRepo))
 	}
@@ -205,4 +207,31 @@ func calculateConnectionStatus(signalStrength int) string {
 	}
 
 	return "online"
+}
+
+func robotByIDHandler(robotRepo *repository.RobotRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		robotID := c.Param("id")
+
+		robot, err := robotRepo.GetRobotByID(c.Request.Context(), robotID)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error":    "robot not found",
+					"robot_id": robotID,
+				})
+				return
+			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to get robot",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"robot": robot,
+		})
+	}
 }

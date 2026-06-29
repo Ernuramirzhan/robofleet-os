@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Ernuramirzhan/robofleet-os/backend/internal/models"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -93,4 +94,39 @@ func (r *RobotRepository) GetAllRobots(ctx context.Context) ([]models.Robot, err
 	}
 
 	return result, nil
+}
+
+func (r *RobotRepository) GetRobotByID(ctx context.Context, robotID string) (*models.Robot, error) {
+	var robot models.Robot
+
+	err := r.db.QueryRow(ctx, `
+		SELECT
+			id,
+			name,
+			robot_class,
+			status,
+			current_zone,
+			target_zone,
+			created_at
+		FROM robots
+		WHERE id = $1
+	`, robotID).Scan(
+		&robot.ID,
+		&robot.Name,
+		&robot.RobotClass,
+		&robot.Status,
+		&robot.CurrentZone,
+		&robot.TargetZone,
+		&robot.CreatedAt,
+	)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, pgx.ErrNoRows
+		}
+
+		return nil, err
+	}
+
+	return &robot, nil
 }
