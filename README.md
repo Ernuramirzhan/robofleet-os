@@ -12,6 +12,7 @@ The goal of RoboFleet OS is to build a backend platform for robot fleet monitori
 
 Implemented so far:
 
+* AI explanation endpoint using Ollama
 * Go backend with Gin
 * PostgreSQL database
 * Docker Compose setup
@@ -41,6 +42,8 @@ Implemented so far:
 
 Current stack:
 
+* Ollama
+* qwen2.5:3b local language model
 * Go
 * Gin Web Framework
 * PostgreSQL
@@ -54,7 +57,6 @@ Planned stack:
 
 * WebSocket real-time updates
 * Dashboard
-* AI / Ollama anomaly explanation module
 
 ## API Endpoints
 
@@ -154,6 +156,28 @@ GET /api/v1/robots/HLB-002/alerts
 ```
 
 Returns recent alerts for a specific robot.
+
+### AI Robot Explanation
+
+```http
+POST /api/v1/ai/explain
+
+Example request:
+
+{
+  "robot_id": "HLB-002"
+}
+
+This endpoint uses Ollama to generate an AI explanation for a specific robot based on its latest telemetry and recent alerts.
+
+The explanation includes:
+
+why the robot is risky
+likely causes
+recommended operator actions
+priority level
+
+---
 
 ### Get Telemetry Records
 
