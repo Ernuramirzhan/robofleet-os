@@ -316,6 +316,7 @@ go test ./...
 
 Project documentation is located in the `docs/` folder:
 
+* `architecture.md`
 * `project_concept.md`
 * `robot_classes.md`
 * `telemetry_fields.md`
