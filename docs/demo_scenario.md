@@ -172,7 +172,31 @@ This endpoint shows recent alerts only for robot `HLB-002`.
 
 This is useful for checking a problematic robot separately from the whole fleet.
 
-## 9. Stop the Project
+## 9. Check AI Robot Explanation
+
+Send a request to the AI explanation endpoint:
+
+```powershell
+$response = Invoke-RestMethod `
+  -Method POST `
+  -Uri "http://localhost:8080/api/v1/ai/explain" `
+  -ContentType "application/json" `
+  -Body '{"robot_id":"HLB-002"}'
+
+$response.explanation
+```
+
+This endpoint uses Ollama to generate an explanation based on the latest telemetry and recent alerts of robot `HLB-002`.
+
+The AI explanation includes:
+
+* why the robot is risky
+* likely causes
+* recommended operator actions
+* priority level
+
+
+## 10. Stop the Project
 
 Stop all containers:
 
